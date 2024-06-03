@@ -1,6 +1,6 @@
 import os
 
-from py_factor_graph.io.pyfg_text import read_from_pyfg_text, save_to_pyfg_text
+from py_factor_graph.io.pyfg_file import read_from_pyfg_file, save_to_pyfg_file
 
 # get current directory  and directory containing data
 cur_dir = os.path.dirname(os.path.realpath(__file__))
@@ -23,11 +23,11 @@ def _check_file_equality(file1, file2):
 def test_pyfg_se3_file() -> None:
     # read factor graph data
     data_file = os.path.join(data_dir, "pyfg_text_se3_test_data.txt")
-    factor_graph = read_from_pyfg_text(data_file)
+    factor_graph = read_from_pyfg_file(data_file)
 
     # write factor graph data
     write_file = os.path.join(tmp_dir, "pyfg_text_se3_test_tmp.txt")
-    save_to_pyfg_text(factor_graph, write_file)
+    save_to_pyfg_file(factor_graph, write_file)
 
     # assert read and write files are equal
     assert _check_file_equality(data_file, write_file)
@@ -39,11 +39,11 @@ def test_pyfg_se3_file() -> None:
 def test_pyfg_se2_file() -> None:
     # read factor graph data
     data_file = os.path.join(data_dir, "pyfg_text_se2_test_data.txt")
-    factor_graph = read_from_pyfg_text(data_file)
+    factor_graph = read_from_pyfg_file(data_file)
 
     # write factor graph data
     write_file = os.path.join(tmp_dir, "pyfg_text_se2_test_tmp.txt")
-    save_to_pyfg_text(factor_graph, write_file)
+    save_to_pyfg_file(factor_graph, write_file)
 
     # assert read and write files are equal
     assert _check_file_equality(data_file, write_file)

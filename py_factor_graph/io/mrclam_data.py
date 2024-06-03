@@ -16,7 +16,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from py_factor_graph.factor_graph import FactorGraphData
-from py_factor_graph.io.pyfg_text import save_to_pyfg_text
+from py_factor_graph.io.pyfg_file import save_to_pyfg_file
 from py_factor_graph.measurements import (
     FGRangeMeasurement,
     PoseMeasurement2D,
@@ -545,7 +545,7 @@ if __name__ == "__main__":
     )
     pyfg = calibrate_range_measures(pyfg)
     pyfg.print_summary()
-    save_to_pyfg_text(pyfg, args.save_path)
+    save_to_pyfg_file(pyfg, args.save_path)
 
     if args.plot:
         pyfg.animate_odometry(show_gt=True, draw_range_lines=True)

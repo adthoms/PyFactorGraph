@@ -998,7 +998,7 @@ class FactorGraphData:
 
     #### saving functionalities
 
-    # TODO: deprecate for pyfg_text.py
+    # TODO: deprecate for pyfg_file.py
     def save_to_file(self, filepath: str):
         """
         Save the factor graph to a file. The format is determined by the file
@@ -1028,7 +1028,7 @@ class FactorGraphData:
 
         logger.info(f"Saved data to {filepath}")
 
-    # TODO: deprecate for pyfg_text.py
+    # TODO: deprecate for pyfg_file.py
     def _save_to_efg_format(
         self,
         data_file: str,
@@ -1273,7 +1273,7 @@ class FactorGraphData:
 
         file_writer.close()
 
-    # TODO: deprecate for pyfg_text.py
+    # TODO: deprecate for pyfg_file.py
     def _save_to_pickle_format(self, data_file: str) -> None:
         """
         Save to pickle format.
@@ -1287,7 +1287,7 @@ class FactorGraphData:
         pickle.dump(self, pickle_file)
         pickle_file.close()
 
-    # TODO: deprecate for pyfg_text.py. We should instead have an io parser that converts between pyfg_text and plaza_format
+    # TODO: deprecate for pyfg_file.py. We should instead have an io parser that converts between pyfg_file and plaza_format
     def _save_to_plaza_format(self, data_folder: str) -> None:
         """
         Save to five plaza file formats.
@@ -1382,7 +1382,7 @@ class FactorGraphData:
         save_TD_plaza()
         return
 
-    # TODO: deprecate for pyfg_text.py. We should instead have an io parser that converts between pyfg_text and tum
+    # TODO: deprecate for pyfg_file.py. We should instead have an io parser that converts between pyfg_file and tum
     def write_pose_gt_to_tum(self, data_dir: str) -> List[str]:
         """
         Write ground truth to TUM format.
@@ -1421,7 +1421,7 @@ class FactorGraphData:
 
         return gt_files
 
-    # TODO: deprecate for pyfg_text.py. We should instead have an io parser that converts between pyfg_text and tum
+    # TODO: deprecate for pyfg_file.py. We should instead have an io parser that converts between pyfg_file and tum
     def write_pose_odom_to_tum(self, data_dir: str) -> List[str]:
         """Write odometry to TUM format.
 

@@ -139,7 +139,7 @@ def _get_pyfg_types(dim: int) -> tuple:
     )
 
 
-def save_to_pyfg_text(fg: FactorGraphData, fpath: str) -> None:
+def save_to_pyfg_file(fg: FactorGraphData, fpath: str) -> None:
     """Save factor graph to PyFG file format.
 
     Args:
@@ -296,7 +296,7 @@ def save_to_pyfg_text(fg: FactorGraphData, fpath: str) -> None:
     logger.info(f"Saved factor graph in PyFG text format to {fpath}")
 
 
-def read_from_pyfg_text(fpath: str) -> FactorGraphData:
+def read_from_pyfg_file(fpath: str) -> FactorGraphData:
     # assume that dimension is consistent
 
     # quickly read the first line to get the dimension
