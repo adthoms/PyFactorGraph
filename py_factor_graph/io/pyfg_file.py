@@ -92,7 +92,7 @@ def _get_measurement_noise_str_from_covariance_matrix(
     measurement_noise = " ".join([f"{x:.{fprec}f}" for x in covar_mat_elems])
 
     # correct formatting of negative zeros
-    measurement_noise = measurement_noise.replace("-0. ", "0. ")
+    measurement_noise = measurement_noise.replace("-0.", "0.")
     return measurement_noise
 
 
