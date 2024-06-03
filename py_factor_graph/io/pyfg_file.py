@@ -36,6 +36,13 @@ from py_factor_graph.measurements import (
     POSE_MEASUREMENT_TYPES,
     POSE_LANDMARK_MEASUREMENT_TYPES,
 )
+from py_factor_graph.io.fprec import (
+    time_fprec,
+    translation_fprec,
+    theta_fprec,
+    quaternion_fprec,
+    covariance_fprec,
+)
 from py_factor_graph.utils.logging_utils import logger
 
 
@@ -157,13 +164,6 @@ def save_to_pyfg_file(fg: FactorGraphData, fpath: str) -> None:
         range_measure_type,
     ) = _get_pyfg_types(fg.dimension)
 
-    # enforce formatting precisions
-    time_fprec = 9
-    translation_fprec = 9
-    theta_fprec = 7
-    quaternion_fprec = 7
-    covariance_fprec = 9
-
     def _get_pose_var_string(pose_var: POSE_VARIABLE_TYPES):
         if isinstance(pose_var, PoseVariable2D):
             return f"{pose_var_type} {pose_var.timestamp:.{time_fprec}f} {pose_var.name} {pose_var.true_x:.{translation_fprec}f} {pose_var.true_y:.{translation_fprec}f} {pose_var.true_theta:.{theta_fprec}f}"
@@ -192,7 +192,12 @@ def save_to_pyfg_file(fg: FactorGraphData, fpath: str) -> None:
         measurement_noise = _get_measurement_noise_str_from_covariance_matrix(
             pose_prior.covariance, covariance_fprec
         )
-        return f"{pose_prior_type} {pose_prior.timestamp:.{time_fprec}f} {pose_prior.name} {measurement_values} {measurement_noise}"
+        timestamp = (
+            pose_prior.timestamp
+            if pose_prior.timestamp is not None
+            else get_time_idx_from_frame_name(pose_prior.name)
+        )
+        return f"{pose_prior_type} {timestamp:.{time_fprec}f} {pose_prior.name} {measurement_values} {measurement_noise}"
 
     def _get_landmark_prior_string(landmark_prior: LANDMARK_PRIOR_TYPES):
         if isinstance(landmark_prior, LandmarkPrior2D):
@@ -204,7 +209,12 @@ def save_to_pyfg_file(fg: FactorGraphData, fpath: str) -> None:
         measurement_noise = _get_measurement_noise_str_from_covariance_matrix(
             landmark_prior.covariance, covariance_fprec
         )
-        return f"{landmark_prior_type} {landmark_prior.timestamp:.{time_fprec}f} {landmark_prior.name} {measurement_values} {measurement_noise}"
+        timestamp = (
+            landmark_prior.timestamp
+            if landmark_prior.timestamp is not None
+            else get_time_idx_from_frame_name(landmark_prior.name)
+        )
+        return f"{landmark_prior_type} {timestamp:.{time_fprec}f} {landmark_prior.name} {measurement_values} {measurement_noise}"
 
     def _get_pose_pose_measure_string(rel_pose_pose_measure: POSE_MEASUREMENT_TYPES):
         measurement_connectivity = (
@@ -220,10 +230,11 @@ def save_to_pyfg_file(fg: FactorGraphData, fpath: str) -> None:
         measurement_noise = _get_measurement_noise_str_from_covariance_matrix(
             rel_pose_pose_measure.covariance, covariance_fprec
         )
-        if rel_pose_pose_measure.timestamp is None:
-            timestamp = 0.0
-        else:
-            timestamp = rel_pose_pose_measure.timestamp
+        timestamp = (
+            rel_pose_pose_measure.timestamp
+            if rel_pose_pose_measure.timestamp is not None
+            else get_time_idx_from_frame_name(rel_pose_pose_measure.base_pose)
+        )
         return f"{rel_pose_pose_measure_type} {timestamp:.{time_fprec}f} {measurement_connectivity} {measurement_values} {measurement_noise}"
 
     def _get_pose_landmark_measure_string(
@@ -241,7 +252,12 @@ def save_to_pyfg_file(fg: FactorGraphData, fpath: str) -> None:
         measurement_noise = _get_measurement_noise_str_from_covariance_matrix(
             rel_pose_landmark_measure.covariance, covariance_fprec
         )
-        return f"{rel_pose_landmark_measure_type} {rel_pose_landmark_measure.timestamp:.{time_fprec}f} {measurement_connectivity} {measurement_values} {measurement_noise}"
+        timestamp = (
+            rel_pose_landmark_measure.timestamp
+            if rel_pose_landmark_measure.timestamp is not None
+            else get_time_idx_from_frame_name(rel_pose_landmark_measure.pose_name)
+        )
+        return f"{rel_pose_landmark_measure_type} {timestamp:.{time_fprec}f} {measurement_connectivity} {measurement_values} {measurement_noise}"
 
     def _get_range_measure_string(range_measure: FGRangeMeasurement):
         # make sure that the variance is non-zero after rounding to
@@ -253,10 +269,11 @@ def save_to_pyfg_file(fg: FactorGraphData, fpath: str) -> None:
                 "This will likely cause numerical issues. We suggest increasing the variance."
                 f"Variance before rounding: {range_measure.variance} Variance after rounding: {rounded_variance}"
             )
-        if range_measure.timestamp is None:
-            timestamp = 0.0
-        else:
-            timestamp = range_measure.timestamp
+        timestamp = (
+            range_measure.timestamp
+            if range_measure.timestamp is not None
+            else get_time_idx_from_frame_name(range_measure.first_key)
+        )
         return f"{range_measure_type} {timestamp:.{time_fprec}f} {range_measure.first_key} {range_measure.second_key} {range_measure.dist:.{translation_fprec}f} {range_measure.variance:.{covariance_fprec}f}"
 
     with open(fpath, "w") as f:
