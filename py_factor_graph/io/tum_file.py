@@ -8,13 +8,8 @@ from py_factor_graph.utils.matrix_utils import (
     get_translation_from_transformation_matrix,
 )
 from py_factor_graph.factor_graph import FactorGraphData
-from py_factor_graph.utils.logging_utils import logger
 from py_factor_graph.utils.name_utils import get_time_idx_from_frame_name
-from py_factor_graph.io.fprec import (
-    time_fprec,
-    translation_fprec,
-    quaternion_fprec,
-)
+from py_factor_graph.utils.logging_utils import logger, F_PREC
 
 
 def save_robot_trajectories_to_tum_file(
@@ -69,9 +64,9 @@ def save_robot_trajectories_to_tum_file(
 
                 # write to file
                 f.write(
-                    f"{ts:.{time_fprec}f} "
-                    f"{t[0]:.{translation_fprec}f} {t[1]:.{translation_fprec}f} {t[2]:.{translation_fprec}f} "
-                    f"{qx:.{quaternion_fprec}f} {qy:.{quaternion_fprec}f} {qz:.{quaternion_fprec}f} {qw:.{quaternion_fprec}f}\n"
+                    f"{ts:.{F_PREC}f} "
+                    f"{t[0]:.{F_PREC}f} {t[1]:.{F_PREC}f} {t[2]:.{F_PREC}f} "
+                    f"{qx:.{F_PREC}f} {qy:.{F_PREC}f} {qz:.{F_PREC}f} {qw:.{F_PREC}f}\n"
                 )
 
         # close file

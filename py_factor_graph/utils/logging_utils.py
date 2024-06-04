@@ -12,3 +12,6 @@ coloredlogs.install(
     fmt="[%(filename)s:%(lineno)d] %(name)s %(levelname)s - %(message)s",
     field_styles=field_styles,
 )
+
+# define uniform numerical precision when logging
+F_PREC = 9

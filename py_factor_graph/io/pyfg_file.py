@@ -36,14 +36,7 @@ from py_factor_graph.measurements import (
     POSE_MEASUREMENT_TYPES,
     POSE_LANDMARK_MEASUREMENT_TYPES,
 )
-from py_factor_graph.io.fprec import (
-    time_fprec,
-    translation_fprec,
-    theta_fprec,
-    quaternion_fprec,
-    covariance_fprec,
-)
-from py_factor_graph.utils.logging_utils import logger
+from py_factor_graph.utils.logging_utils import logger, F_PREC
 
 
 POSE_TYPE_2D = "VERTEX_SE2"
@@ -166,106 +159,108 @@ def save_to_pyfg_file(fg: FactorGraphData, fpath: str) -> None:
 
     def _get_pose_var_string(pose_var: POSE_VARIABLE_TYPES):
         if isinstance(pose_var, PoseVariable2D):
-            return f"{pose_var_type} {pose_var.timestamp:.{time_fprec}f} {pose_var.name} {pose_var.true_x:.{translation_fprec}f} {pose_var.true_y:.{translation_fprec}f} {pose_var.true_theta:.{theta_fprec}f}"
+            return f"{pose_var_type} {pose_var.timestamp:.{F_PREC}f} {pose_var.name} {pose_var.true_x:.{F_PREC}f} {pose_var.true_y:.{F_PREC}f} {pose_var.true_theta:.{F_PREC}f}"
         elif isinstance(pose_var, PoseVariable3D):
             qx, qy, qz, qw = pose_var.true_quat
-            return f"{pose_var_type} {pose_var.timestamp:.{time_fprec}f} {pose_var.name} {pose_var.true_x:.{translation_fprec}f} {pose_var.true_y:.{translation_fprec}f} {pose_var.true_z:.{translation_fprec}f} {qx:.{quaternion_fprec}f} {qy:.{quaternion_fprec}f} {qz:.{quaternion_fprec}f} {qw:.{quaternion_fprec}f}"
+            return f"{pose_var_type} {pose_var.timestamp:.{F_PREC}f} {pose_var.name} {pose_var.true_x:.{F_PREC}f} {pose_var.true_y:.{F_PREC}f} {pose_var.true_z:.{F_PREC}f} {qx:.{F_PREC}f} {qy:.{F_PREC}f} {qz:.{F_PREC}f} {qw:.{F_PREC}f}"
         else:
             raise ValueError(f"Unknown pose type {type(pose_var)}")
 
     def _get_landmark_var_string(landmark_var: LANDMARK_VARIABLE_TYPES):
         if isinstance(landmark_var, LandmarkVariable2D):
-            return f"{landmark_var_type} {landmark_var.name} {landmark_var.true_x:.{translation_fprec}f} {landmark_var.true_y:.{translation_fprec}f}"
+            return f"{landmark_var_type} {landmark_var.name} {landmark_var.true_x:.{F_PREC}f} {landmark_var.true_y:.{F_PREC}f}"
         elif isinstance(landmark_var, LandmarkVariable3D):
-            return f"{landmark_var_type} {landmark_var.name} {landmark_var.true_x:.{translation_fprec}f} {landmark_var.true_y:.{translation_fprec}f} {landmark_var.true_z:.{translation_fprec}f}"
+            return f"{landmark_var_type} {landmark_var.name} {landmark_var.true_x:.{F_PREC}f} {landmark_var.true_y:.{F_PREC}f} {landmark_var.true_z:.{F_PREC}f}"
         else:
             raise ValueError(f"Unknown landmark type {type(landmark_var)}")
 
     def _get_pose_prior_string(pose_prior: POSE_PRIOR_TYPES):
         if isinstance(pose_prior, PosePrior2D):
-            measurement_values = f"{pose_prior.x:.{translation_fprec}f} {pose_prior.y:.{translation_fprec}f} {pose_prior.theta:.{theta_fprec}f}"
+            measurement_values = f"{pose_prior.x:.{F_PREC}f} {pose_prior.y:.{F_PREC}f} {pose_prior.theta:.{F_PREC}f}"
         elif isinstance(pose_prior, PosePrior3D):
             qx, qy, qz, qw = pose_prior.quat
-            measurement_values = f"{pose_prior.x:.{translation_fprec}f} {pose_prior.y:.{translation_fprec}f} {pose_prior.z:.{translation_fprec}f} {qx:.{quaternion_fprec}f} {qy:.{quaternion_fprec}f} {qz:.{quaternion_fprec}f} {qw:.{quaternion_fprec}f}"
+            measurement_values = f"{pose_prior.x:.{F_PREC}f} {pose_prior.y:.{F_PREC}f} {pose_prior.z:.{F_PREC}f} {qx:.{F_PREC}f} {qy:.{F_PREC}f} {qz:.{F_PREC}f} {qw:.{F_PREC}f}"
         else:
             raise ValueError(f"Unknown pose prior type {type(pose_prior)}")
         measurement_noise = _get_measurement_noise_str_from_covariance_matrix(
-            pose_prior.covariance, covariance_fprec
+            pose_prior.covariance, F_PREC
         )
         timestamp = (
             pose_prior.timestamp
             if pose_prior.timestamp is not None
             else get_time_idx_from_frame_name(pose_prior.name)
         )
-        return f"{pose_prior_type} {timestamp:.{time_fprec}f} {pose_prior.name} {measurement_values} {measurement_noise}"
+        return f"{pose_prior_type} {timestamp:.{F_PREC}f} {pose_prior.name} {measurement_values} {measurement_noise}"
 
     def _get_landmark_prior_string(landmark_prior: LANDMARK_PRIOR_TYPES):
         if isinstance(landmark_prior, LandmarkPrior2D):
-            measurement_values = f"{landmark_prior.x:.{translation_fprec}f} {landmark_prior.y:.{translation_fprec}f}"
+            measurement_values = (
+                f"{landmark_prior.x:.{F_PREC}f} {landmark_prior.y:.{F_PREC}f}"
+            )
         elif isinstance(landmark_prior, LandmarkPrior3D):
-            measurement_values = f"{landmark_prior.x:.{translation_fprec}f} {landmark_prior.y:.{translation_fprec}f} {landmark_prior.z:.{translation_fprec}f}"
+            measurement_values = f"{landmark_prior.x:.{F_PREC}f} {landmark_prior.y:.{F_PREC}f} {landmark_prior.z:.{F_PREC}f}"
         else:
             raise ValueError(f"Unknown landmark prior type {type(landmark_prior)}")
         measurement_noise = _get_measurement_noise_str_from_covariance_matrix(
-            landmark_prior.covariance, covariance_fprec
+            landmark_prior.covariance, F_PREC
         )
         timestamp = (
             landmark_prior.timestamp
             if landmark_prior.timestamp is not None
             else get_time_idx_from_frame_name(landmark_prior.name)
         )
-        return f"{landmark_prior_type} {timestamp:.{time_fprec}f} {landmark_prior.name} {measurement_values} {measurement_noise}"
+        return f"{landmark_prior_type} {timestamp:.{F_PREC}f} {landmark_prior.name} {measurement_values} {measurement_noise}"
 
     def _get_pose_pose_measure_string(rel_pose_pose_measure: POSE_MEASUREMENT_TYPES):
         measurement_connectivity = (
             f"{rel_pose_pose_measure.base_pose} {rel_pose_pose_measure.to_pose}"
         )
         if isinstance(rel_pose_pose_measure, PoseMeasurement2D):
-            measurement_values = f"{rel_pose_pose_measure.x:.{translation_fprec}f} {rel_pose_pose_measure.y:.{translation_fprec}f} {rel_pose_pose_measure.theta:.{theta_fprec}f}"
+            measurement_values = f"{rel_pose_pose_measure.x:.{F_PREC}f} {rel_pose_pose_measure.y:.{F_PREC}f} {rel_pose_pose_measure.theta:.{F_PREC}f}"
         elif isinstance(rel_pose_pose_measure, PoseMeasurement3D):
             qx, qy, qz, qw = rel_pose_pose_measure.quat
-            measurement_values = f"{rel_pose_pose_measure.x:.{translation_fprec}f} {rel_pose_pose_measure.y:.{translation_fprec}f} {rel_pose_pose_measure.z:.{translation_fprec}f} {qx:.{quaternion_fprec}f} {qy:.{quaternion_fprec}f} {qz:.{quaternion_fprec}f} {qw:.{quaternion_fprec}f}"
+            measurement_values = f"{rel_pose_pose_measure.x:.{F_PREC}f} {rel_pose_pose_measure.y:.{F_PREC}f} {rel_pose_pose_measure.z:.{F_PREC}f} {qx:.{F_PREC}f} {qy:.{F_PREC}f} {qz:.{F_PREC}f} {qw:.{F_PREC}f}"
         else:
             raise ValueError(f"Unknown measurement type {type(rel_pose_pose_measure)}")
         measurement_noise = _get_measurement_noise_str_from_covariance_matrix(
-            rel_pose_pose_measure.covariance, covariance_fprec
+            rel_pose_pose_measure.covariance, F_PREC
         )
         timestamp = (
             rel_pose_pose_measure.timestamp
             if rel_pose_pose_measure.timestamp is not None
             else get_time_idx_from_frame_name(rel_pose_pose_measure.base_pose)
         )
-        return f"{rel_pose_pose_measure_type} {timestamp:.{time_fprec}f} {measurement_connectivity} {measurement_values} {measurement_noise}"
+        return f"{rel_pose_pose_measure_type} {timestamp:.{F_PREC}f} {measurement_connectivity} {measurement_values} {measurement_noise}"
 
     def _get_pose_landmark_measure_string(
         rel_pose_landmark_measure: POSE_LANDMARK_MEASUREMENT_TYPES,
     ):
         measurement_connectivity = f"{rel_pose_landmark_measure.pose_name} {rel_pose_landmark_measure.landmark_name}"
         if isinstance(rel_pose_landmark_measure, PoseToLandmarkMeasurement2D):
-            measurement_values = f"{rel_pose_landmark_measure.x:.{translation_fprec}f} {rel_pose_landmark_measure.y:.{translation_fprec}f}"
+            measurement_values = f"{rel_pose_landmark_measure.x:.{F_PREC}f} {rel_pose_landmark_measure.y:.{F_PREC}f}"
         elif isinstance(rel_pose_landmark_measure, PoseToLandmarkMeasurement3D):
-            measurement_values = f"{rel_pose_landmark_measure.x:.{translation_fprec}f} {rel_pose_landmark_measure.y:.{translation_fprec}f} {rel_pose_landmark_measure.z:.{translation_fprec}f}"
+            measurement_values = f"{rel_pose_landmark_measure.x:.{F_PREC}f} {rel_pose_landmark_measure.y:.{F_PREC}f} {rel_pose_landmark_measure.z:.{F_PREC}f}"
         else:
             raise ValueError(
                 f"Unknown measurement type {type(rel_pose_landmark_measure)}"
             )
         measurement_noise = _get_measurement_noise_str_from_covariance_matrix(
-            rel_pose_landmark_measure.covariance, covariance_fprec
+            rel_pose_landmark_measure.covariance, F_PREC
         )
         timestamp = (
             rel_pose_landmark_measure.timestamp
             if rel_pose_landmark_measure.timestamp is not None
             else get_time_idx_from_frame_name(rel_pose_landmark_measure.pose_name)
         )
-        return f"{rel_pose_landmark_measure_type} {timestamp:.{time_fprec}f} {measurement_connectivity} {measurement_values} {measurement_noise}"
+        return f"{rel_pose_landmark_measure_type} {timestamp:.{F_PREC}f} {measurement_connectivity} {measurement_values} {measurement_noise}"
 
     def _get_range_measure_string(range_measure: FGRangeMeasurement):
         # make sure that the variance is non-zero after rounding to
         # the desired precision
-        rounded_variance = round(range_measure.variance, covariance_fprec)
+        rounded_variance = round(range_measure.variance, F_PREC)
         if rounded_variance == 0.0:
             raise ValueError(
-                f"Range measurement variance is zero after rounding to {covariance_fprec} decimal places. "
+                f"Range measurement variance is zero after rounding to {F_PREC} decimal places. "
                 "This will likely cause numerical issues. We suggest increasing the variance."
                 f"Variance before rounding: {range_measure.variance} Variance after rounding: {rounded_variance}"
             )
@@ -274,7 +269,7 @@ def save_to_pyfg_file(fg: FactorGraphData, fpath: str) -> None:
             if range_measure.timestamp is not None
             else get_time_idx_from_frame_name(range_measure.first_key)
         )
-        return f"{range_measure_type} {timestamp:.{time_fprec}f} {range_measure.first_key} {range_measure.second_key} {range_measure.dist:.{translation_fprec}f} {range_measure.variance:.{covariance_fprec}f}"
+        return f"{range_measure_type} {timestamp:.{F_PREC}f} {range_measure.first_key} {range_measure.second_key} {range_measure.dist:.{F_PREC}f} {range_measure.variance:.{F_PREC}f}"
 
     with open(fpath, "w") as f:
         for pose_chain in fg.pose_variables:

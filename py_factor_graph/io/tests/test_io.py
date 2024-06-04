@@ -13,7 +13,7 @@ from py_factor_graph.io.pyfg_file import (
     save_to_pyfg_file,
 )
 from py_factor_graph.io.tum_file import save_robot_trajectories_to_tum_file
-from py_factor_graph.io.fprec import time_fprec, translation_fprec, quaternion_fprec
+from py_factor_graph.utils.logging_utils import F_PREC
 
 # get current directory and directory containing data
 cur_dir = os.path.dirname(os.path.realpath(__file__))
@@ -45,7 +45,7 @@ def check_file_equality(file_path_1: str, file_path_2: str) -> bool:
 def check_tum_line_closeness(
     tum_line_list_1: List[str], tum_line_list_2: List[str]
 ) -> bool:
-    """Checks that two lists containing TUM formatted strings are within tolerance as defined by fprec.
+    """Checks that two lists containing TUM formatted strings are within tolerance as defined by F_PREC.
 
     Args:
       tum_line_list_1 (List[str]): The first list of lines.
@@ -59,11 +59,7 @@ def check_tum_line_closeness(
     for line1, line2 in zip(tum_line_list_1, tum_line_list_2):
         line1_array = np.fromstring(line1, sep=" ", dtype=float)
         line2_array = np.fromstring(line2, sep=" ", dtype=float)
-        if not np.allclose(line1_array[0], line2_array[0], atol=time_fprec):
-            return False
-        if not np.allclose(line1_array[1:3], line2_array[1:3], atol=translation_fprec):
-            return False
-        if not np.allclose(line1_array[4:], line2_array[4:], atol=quaternion_fprec):
+        if not np.allclose(line1_array, line2_array, atol=F_PREC):
             return False
     return True
 
@@ -142,13 +138,11 @@ def check_write_tum_file(file_type: str) -> None:
                             qx, qy, qz, qw = get_quat_from_rotation_matrix(
                                 get_rotation_matrix_from_theta(float(columns[5]))
                             )
-                            quat_string = f"{qx:.{quaternion_fprec}f} {qy:.{quaternion_fprec}f} {qz:.{quaternion_fprec}f} {qw:.{quaternion_fprec}f}"
+                            quat_string = f"{qx:.{F_PREC}f} {qy:.{F_PREC}f} {qz:.{F_PREC}f} {qw:.{F_PREC}f}"
 
                             # add pyfg data in tum format
                             tum_columns = (
-                                [columns[1]]
-                                + columns[3:5]
-                                + [f"{0:.{translation_fprec}f}"]
+                                [columns[1]] + columns[3:5] + [f"{0:.{F_PREC}f}"]
                             )
                             pyfg_equivalent_tum_lines.append(
                                 " ".join(tum_columns) + " " + quat_string
