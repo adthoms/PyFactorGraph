@@ -11,10 +11,7 @@ import matplotlib.lines as mlines
 import mpl_toolkits.mplot3d.art3d as art3d
 
 from py_factor_graph.utils.matrix_utils import (
-    get_translation_from_transformation_matrix,
-    get_rotation_matrix_from_transformation_matrix,
     get_theta_from_transformation_matrix,
-    get_quat_from_rotation_matrix,
 )
 
 from py_factor_graph.variables import (
@@ -45,6 +42,7 @@ from py_factor_graph.priors import (
     LANDMARK_PRIOR_TYPES,
 )
 from py_factor_graph.utils.name_utils import (
+    get_robot_char_from_frame_name,
     get_robot_idx_from_frame_name,
     get_time_idx_from_frame_name,
 )
@@ -427,6 +425,19 @@ class FactorGraphData:
         return variable_positions_dict
 
     @property
+    def all_robot_chars(self) -> List[str]:
+        """Returns all of the robot characters.
+
+        Returns:
+            List[char]: a list of all the robot characters
+        """
+        robot_chars = []
+        for pose_chain in self.pose_variables:
+            robot_char = get_robot_char_from_frame_name(pose_chain[0].name)
+            robot_chars.append(robot_char)
+        return robot_chars
+
+    @property
     def all_variable_names(self) -> List[str]:
         """Returns all of the variable names
 
@@ -555,6 +566,19 @@ class FactorGraphData:
         return true_trajectories
 
     @property
+    def true_trajectories_dict(self) -> Dict[str, np.ndarray]:
+        """Returns the trajectories of ground truth poses for each robot.
+
+        Returns:
+            Dict[str, np.ndarray]: the trajectories of ground truth poses for each robot
+        """
+        true_traj_dict: Dict[str, List[np.ndarray]] = {}
+        for robot_idx, pose_chain in enumerate(self.pose_variables):
+            for i, pose in enumerate(pose_chain):
+                true_traj_dict[pose.name] = self.true_trajectories[robot_idx][i]
+        return true_traj_dict
+
+    @property
     def odometry_trajectories(self) -> List[List[np.ndarray]]:
         """Returns the trajectories for each robot obtained from the odometry measurements.
 
@@ -578,20 +602,60 @@ class FactorGraphData:
         Returns:
             Dict[str, np.ndarray]: the trajectories for each robot obtained from the odometry measurements
         """
-        curr_poses: List[np.ndarray] = [
-            np.eye(self.dimension + 1) for _ in range(self.num_robots)
-        ]
-        odom_traj: Dict[str, np.ndarray] = {}
+        odometry_traj_dict: Dict[str, List[np.ndarray]] = {}
         for robot_idx, odom_chain in enumerate(self.odom_measurements):
             first_pose_name = odom_chain[0].base_pose
-            odom_traj[first_pose_name] = curr_poses[robot_idx]
-            for odom in odom_chain:
-                curr_poses[robot_idx] = np.dot(
-                    curr_poses[robot_idx], odom.transformation_matrix
-                )
+            odometry_traj_dict[first_pose_name] = self.odometry_trajectories[robot_idx][
+                0
+            ]
+            for i, odom in enumerate(odom_chain):
                 pose_name = odom.to_pose
-                odom_traj[pose_name] = curr_poses[robot_idx]
-        return odom_traj
+                odometry_traj_dict[pose_name] = self.odometry_trajectories[robot_idx][
+                    i + 1
+                ]
+        return odometry_traj_dict
+
+    @property
+    def robot_true_trajectories_dict(self) -> Dict[str, Dict[str, np.ndarray]]:
+        """Returns the trajectory dictionaries for each robot obtained from ground truth poses, keyed by robot character.
+
+        Returns:
+            Dict[str,Dict[str, np.ndarray]]: the trajectory dictionaries for each robot obtained from ground truth poses, keyed by robot character.
+        """
+        return self._robot_trajectories_dict(use_ground_truth=True)
+
+    @property
+    def robot_odometry_trajectories_dict(self) -> Dict[str, Dict[str, np.ndarray]]:
+        """Returns the trajectory dictionaries for each robot obtained from the odometry measurements, keyed by robot character.
+
+        Returns:
+            Dict[str,Dict[str, np.ndarray]]: the trajectory dictionaries for each robot obtained from the odometry measurements, keyed by robot character.
+        """
+        return self._robot_trajectories_dict(use_ground_truth=False)
+
+    def _robot_trajectories_dict(
+        self, use_ground_truth: bool = True
+    ) -> Dict[str, Dict[str, np.ndarray]]:
+        """Returns the trajectory dictionaries for each robot obtained from either ground truth poses or odometry measurements, keyed by robot character.
+
+        Args:
+            use_odometry (bool): If True, use ground truth poses are used. If False, odometry measurements are used.
+
+        Returns:
+            Dict[str,Dict[str, np.ndarray]]: the trajectory dictionaries for each robot obtained from either ground truth poses or odometry measurements, keyed by robot character.
+        """
+        trajectories_dict = (
+            self.true_trajectories_dict
+            if use_ground_truth
+            else self.odometry_trajectories_dict
+        )
+        robot_traj_dict: Dict[str, Dict[str, np.ndarray]] = {}
+        for robot_and_pose_ids, transformation_matrix in trajectories_dict.items():
+            robot_char = get_robot_char_from_frame_name(robot_and_pose_ids)
+            if robot_char not in robot_traj_dict:
+                robot_traj_dict[robot_char] = {}
+            robot_traj_dict[robot_char][robot_and_pose_ids] = transformation_matrix
+        return robot_traj_dict
 
     @property
     def interrobot_loop_closures(self) -> List[POSE_MEASUREMENT_TYPES]:
@@ -1381,99 +1445,6 @@ class FactorGraphData:
         save_TL_plaza()
         save_TD_plaza()
         return
-
-    # TODO: deprecate for pyfg_file.py. We should instead have an io parser that converts between pyfg_file and tum
-    def write_pose_gt_to_tum(self, data_dir: str) -> List[str]:
-        """
-        Write ground truth to TUM format.
-
-        Args:
-            data_dir (str): the base folder to write the files to
-
-        Returns:
-            List[str]: the list of file paths written
-        """
-        if not os.path.exists(data_dir):
-            os.makedirs(data_dir)
-
-        logger.debug(f"Writing ground truth to TUM format in {data_dir}")
-        gt_files = []
-        possible_end_chars = [chr(ord("A") + i) for i in range(26)]
-        # remove 'L' from possible end chars because it is reserved for landmarks
-        possible_end_chars.remove("L")
-        for i, pose_chain in enumerate(self.pose_variables):
-            filename = f"gt_traj_{possible_end_chars[i]}.tum"
-            filepath = os.path.join(data_dir, filename)
-            fw = open(filepath, "w")
-
-            for pose_idx, pose in enumerate(pose_chain):
-                timestamp = pose.timestamp if pose.timestamp is not None else pose_idx
-                qx, qy, qz, qw = pose.true_quat
-                fw.write(
-                    f"{timestamp} "
-                    f"{pose.true_x} {pose.true_y} {pose.true_z} "
-                    f"{qx} {qy} {qz} {qw}\n"
-                )
-
-            fw.close()
-            logger.debug(f"Saved to {filepath}")
-            gt_files.append(filepath)
-
-        return gt_files
-
-    # TODO: deprecate for pyfg_file.py. We should instead have an io parser that converts between pyfg_file and tum
-    def write_pose_odom_to_tum(self, data_dir: str) -> List[str]:
-        """Write odometry to TUM format.
-
-        Args:
-            data_dir (str): the base folder to write the files to
-
-        Returns:
-            List[str]: the list of file paths written
-        """
-        logger.debug(f"Writing odometry to TUM format in {data_dir}")
-        odom_files = []
-        for i, odom_chain in enumerate(self.odom_measurements):
-            filename = "odom_traj_" + chr(ord("A") + i) + ".tum"
-            filepath = os.path.join(data_dir, filename)
-            fw = open(filepath, "w")
-
-            start_pose = self.pose_variables[i][0].transformation_matrix
-            start_timestamp = (
-                self.pose_variables[i][0].timestamp
-                if self.pose_variables[i][0].timestamp is not None
-                else 0
-            )
-            x, y, z = get_translation_from_transformation_matrix(start_pose)
-            rot = get_rotation_matrix_from_transformation_matrix(start_pose)
-            qx, qy, qz, qw = get_quat_from_rotation_matrix(rot)
-            fw.write(f"{start_timestamp} " f"{x} {y} {z} " f"{qx} {qy} {qz} {qw}\n")
-
-            cur_pose = start_pose
-            for odom_idx, odom in enumerate(odom_chain):
-                odom_mat = odom.transformation_matrix
-                cur_pose = cur_pose @ odom_mat
-
-                cur_x, cur_y, cur_z = get_translation_from_transformation_matrix(
-                    cur_pose
-                )
-                cur_rot = get_rotation_matrix_from_transformation_matrix(cur_pose)
-                cur_qx, cur_qy, cur_qz, cur_qw = get_quat_from_rotation_matrix(cur_rot)
-
-                timestamp = (
-                    odom.timestamp if odom.timestamp is not None else (odom_idx + 1)
-                )
-                fw.write(
-                    f"{timestamp} "
-                    f"{cur_x} {cur_y} {cur_z} "
-                    f"{cur_qx} {cur_qy} {cur_qz} {cur_qw}\n"
-                )
-
-            fw.close()
-            logger.info(f"Saved to {filepath}")
-            odom_files.append(filepath)
-
-        return odom_files
 
     #### plotting functions ####
 
