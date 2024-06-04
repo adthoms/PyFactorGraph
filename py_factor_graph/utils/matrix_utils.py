@@ -348,6 +348,8 @@ def get_quat_from_rotation_matrix(mat: np.ndarray) -> np.ndarray:
     if quat[-1] < 0:
         quat = np.negative(quat)
 
+    quat[quat == 0] = abs(quat[quat == 0])
+
     return quat
 
 
