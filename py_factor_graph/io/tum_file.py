@@ -13,7 +13,10 @@ from py_factor_graph.utils.logging_utils import logger, F_PREC
 
 
 def save_robot_trajectories_to_tum_file(
-    fg: FactorGraphData, dir: str, use_ground_truth: bool = True
+    fg: FactorGraphData,
+    dir: str,
+    use_ground_truth: bool = True,
+    use_pose_idx: bool = True,
 ) -> List[str]:
     """Save robot trajectories to TUM format. Each file corresponds to a robot's trajectory.
 
@@ -21,19 +24,20 @@ def save_robot_trajectories_to_tum_file(
       fg (FactorGraphData): The factor graph data.
       dir (str): The base folder to write the files to.
       use_ground_truth (bool, optional): Whether to use ground truth odometry. Defaults to True.
+      use_pose_idx (bool, optional): Whether to use pose index for timestamp. Defaults to True.
 
     Returns:
       List[str]: The list of file paths written.
     """
-    # set file prefix and trajectory dictionary
+    # initialize
     file_prefix = "odom_gt_robot_" if use_ground_truth else "odom_meas_robot_"
+    header_stamp = "pose_idx" if use_pose_idx else "time_stamp"
+    t_fprec = 0 if use_pose_idx else F_PREC
     trajectory_dict = (
         fg.robot_true_trajectories_dict
         if use_ground_truth
         else fg.robot_odometry_trajectories_dict
     )
-
-    # initialize list of odometry files
     odom_files = []
 
     # write to separate files for each robot
@@ -45,15 +49,19 @@ def save_robot_trajectories_to_tum_file(
         # open file for writing
         with open(file_path, "w") as f:
             # write header
-            f.write("# time_stamp x y z qx qy qz qw\n")
+            f.write(f"# {header_stamp} x y z qx qy qz qw\n")
 
             # iterate over trajectory for each robot
             for robot_and_pose_id, T in trajectory_dict[robot_char].items():
                 # get timestamped transform in TUM format
                 ts = (
-                    fg.pose_variables_dict[robot_and_pose_id].timestamp
+                    get_time_idx_from_frame_name(robot_and_pose_id)
+                    if use_pose_idx
+                    else fg.pose_variables_dict[robot_and_pose_id].timestamp
                     if fg.pose_variables_dict[robot_and_pose_id].timestamp is not None
-                    else get_time_idx_from_frame_name(robot_and_pose_id)
+                    else ValueError(
+                        f"Timestamp not found in pose variable {robot_and_pose_id}."
+                    )
                 )
                 qx, qy, qz, qw = get_quat_from_rotation_matrix(
                     get_rotation_matrix_from_transformation_matrix(T)
@@ -64,7 +72,7 @@ def save_robot_trajectories_to_tum_file(
 
                 # write to file
                 f.write(
-                    f"{ts:.{F_PREC}f} "
+                    f"{ts:.{t_fprec}f} "
                     f"{t[0]:.{F_PREC}f} {t[1]:.{F_PREC}f} {t[2]:.{F_PREC}f} "
                     f"{qx:.{F_PREC}f} {qy:.{F_PREC}f} {qz:.{F_PREC}f} {qw:.{F_PREC}f}\n"
                 )

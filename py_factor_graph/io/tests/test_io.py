@@ -102,73 +102,79 @@ def check_write_tum_file(file_type: str) -> None:
     factor_graph = read_from_pyfg_file(data_file)
     robot_chars = factor_graph.all_robot_chars
 
-    # write factor graph data for both ground truth and measured odometry
+    # set flags
     trajectory_flags = [True, False]
+    pose_ix_flags = [True, False]
+
+    # write factor graph data
     for trajectory_flag in trajectory_flags:
-        # retain same file prefix from save_robot_trajectories_to_tum_file
-        file_prefix = "odom_gt_robot_" if trajectory_flag else "odom_meas_robot_"
+        for pose_ix_flag in pose_ix_flags:
+            # retain same file prefix from save_robot_trajectories_to_tum_file
+            file_prefix = "odom_gt_robot_" if trajectory_flag else "odom_meas_robot_"
 
-        # save robot trajectories to TUM file
-        save_robot_trajectories_to_tum_file(factor_graph, tmp_dir, trajectory_flag)
+            # save robot trajectories to TUM file
+            save_robot_trajectories_to_tum_file(
+                factor_graph, tmp_dir, trajectory_flag, pose_ix_flag
+            )
 
-        # iterate over all TUM files
-        for robot_char in robot_chars:
-            write_file = os.path.join(tmp_dir, f"{file_prefix}{robot_char}.txt")
+            # iterate over all TUM files
+            for robot_char in robot_chars:
+                write_file = os.path.join(tmp_dir, f"{file_prefix}{robot_char}.txt")
 
-            # TUM lines
-            saved_tum_lines = []
-            with open(write_file, "r") as f:
-                for line in f:
-                    if line.startswith("#"):
-                        continue
-                    saved_tum_lines.append(line.strip())
+                # TUM lines
+                saved_tum_lines = []
+                with open(write_file, "r") as f:
+                    for line in f:
+                        if line.startswith("#"):
+                            continue
+                        saved_tum_lines.append(line.strip())
 
-            # PyFG lines
-            pyfg_equivalent_tum_lines = []
-            with open(data_file, "r") as f:
-                lines = f.readlines()
-                for line in lines:
-                    columns = line.strip().split()
-                    if (
-                        columns[0] in [POSE_TYPE_2D, POSE_TYPE_3D]
-                        and robot_char in columns[2]
-                    ):
-                        if file_type == "se2":
-                            # get theta from quat to avoid floating point rounding errors
-                            qx, qy, qz, qw = get_quat_from_rotation_matrix(
-                                get_rotation_matrix_from_theta(float(columns[5]))
-                            )
-                            quat_string = f"{qx:.{F_PREC}f} {qy:.{F_PREC}f} {qz:.{F_PREC}f} {qw:.{F_PREC}f}"
+                # PyFG lines
+                pyfg_equivalent_tum_lines = []
+                with open(data_file, "r") as f:
+                    lines = f.readlines()
+                    for line in lines:
+                        columns = line.strip().split()
+                        if (
+                            columns[0] in [POSE_TYPE_2D, POSE_TYPE_3D]
+                            and robot_char in columns[2]
+                        ):
+                            if file_type == "se2":
+                                # get theta from quat to avoid floating point rounding errors
+                                qx, qy, qz, qw = get_quat_from_rotation_matrix(
+                                    get_rotation_matrix_from_theta(float(columns[5]))
+                                )
+                                quat_string = f"{qx:.{F_PREC}f} {qy:.{F_PREC}f} {qz:.{F_PREC}f} {qw:.{F_PREC}f}"
 
-                            # add pyfg data in tum format
-                            tum_columns = (
-                                [columns[1]] + columns[3:5] + [f"{0:.{F_PREC}f}"]
-                            )
-                            pyfg_equivalent_tum_lines.append(
-                                " ".join(tum_columns) + " " + quat_string
-                            )
-                        elif file_type == "se3":
-                            # add pyfg data in tum format
-                            tum_columns = [columns[1]] + columns[3:]
-                            pyfg_equivalent_tum_lines.append(" ".join(tum_columns))
-                        else:
-                            raise ValueError(
-                                f"PyFG test file type {file_type} is invalid"
-                            )
+                                # add pyfg data in tum format
+                                tum_columns = (
+                                    [columns[1]] + columns[3:5] + [f"{0:.{F_PREC}f}"]
+                                )
+                                pyfg_equivalent_tum_lines.append(
+                                    " ".join(tum_columns) + " " + quat_string
+                                )
+                            elif file_type == "se3":
+                                # add pyfg data in tum format
+                                tum_columns = [columns[1]] + columns[3:]
+                                pyfg_equivalent_tum_lines.append(" ".join(tum_columns))
+                            else:
+                                raise ValueError(
+                                    f"PyFG test file type {file_type} is invalid"
+                                )
 
-            # check written TUM lines against PyFG lines
-            if trajectory_flag:
-                # ground truth poses must be identical for fprec
-                assert saved_tum_lines == pyfg_equivalent_tum_lines
-            else:
-                # measured odom will accumulate error through pre-multiplication
-                # pyfg test files assume zero-noise odometry measurements
-                assert check_tum_line_closeness(
-                    saved_tum_lines, pyfg_equivalent_tum_lines
-                )
+                # check written TUM lines against PyFG lines
+                if trajectory_flag:
+                    # ground truth poses must be identical for fprec
+                    assert saved_tum_lines == pyfg_equivalent_tum_lines
+                else:
+                    # measured odom will accumulate error through pre-multiplication
+                    # pyfg test files assume zero-noise odometry measurements
+                    assert check_tum_line_closeness(
+                        saved_tum_lines, pyfg_equivalent_tum_lines
+                    )
 
-            # remove temporary file
-            os.remove(write_file)
+                # remove temporary file
+                os.remove(write_file)
 
 
 def test_pyfg_se3_file() -> None:
