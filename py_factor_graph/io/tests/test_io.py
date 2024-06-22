@@ -103,18 +103,18 @@ def check_write_tum_file(file_type: str) -> None:
     robot_chars = factor_graph.all_robot_chars
 
     # set flags
-    trajectory_flags = [True, False]
-    pose_ix_flags = [True, False]
+    use_ground_truth_flags = [True, False]
+    use_pose_idx_flags = [True, False]
 
     # write factor graph data
-    for trajectory_flag in trajectory_flags:
-        for pose_ix_flag in pose_ix_flags:
+    for use_ground_truth in use_ground_truth_flags:
+        for use_pose_idx in use_pose_idx_flags:
             # retain same file prefix from save_robot_trajectories_to_tum_file
-            file_prefix = "odom_gt_robot_" if trajectory_flag else "odom_meas_robot_"
+            file_prefix = "odom_gt_robot_" if use_ground_truth else "odom_meas_robot_"
 
             # save robot trajectories to TUM file
             save_robot_trajectories_to_tum_file(
-                factor_graph, tmp_dir, trajectory_flag, pose_ix_flag
+                factor_graph, tmp_dir, use_ground_truth, use_pose_idx
             )
 
             # iterate over all TUM files
@@ -139,6 +139,11 @@ def check_write_tum_file(file_type: str) -> None:
                             columns[0] in [POSE_TYPE_2D, POSE_TYPE_3D]
                             and robot_char in columns[2]
                         ):
+                            # get pose index as timestamp of pose ID
+                            state_idx_str = columns[1]
+                            if use_pose_idx:
+                                state_idx_str = "".join(filter(str.isdigit, columns[2]))
+
                             if file_type == "se2":
                                 # get theta from quat to avoid floating point rounding errors
                                 qx, qy, qz, qw = get_quat_from_rotation_matrix(
@@ -148,14 +153,14 @@ def check_write_tum_file(file_type: str) -> None:
 
                                 # add pyfg data in tum format
                                 tum_columns = (
-                                    [columns[1]] + columns[3:5] + [f"{0:.{F_PREC}f}"]
+                                    [state_idx_str] + columns[3:5] + [f"{0:.{F_PREC}f}"]
                                 )
                                 pyfg_equivalent_tum_lines.append(
                                     " ".join(tum_columns) + " " + quat_string
                                 )
                             elif file_type == "se3":
                                 # add pyfg data in tum format
-                                tum_columns = [columns[1]] + columns[3:]
+                                tum_columns = [state_idx_str] + columns[3:]
                                 pyfg_equivalent_tum_lines.append(" ".join(tum_columns))
                             else:
                                 raise ValueError(
@@ -163,7 +168,7 @@ def check_write_tum_file(file_type: str) -> None:
                                 )
 
                 # check written TUM lines against PyFG lines
-                if trajectory_flag:
+                if use_ground_truth:
                     # ground truth poses must be identical for fprec
                     assert saved_tum_lines == pyfg_equivalent_tum_lines
                 else:
